@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gerador de PDF</title>
+</head>
+<body>
+
+<input type="text" placeholder="Nome do arquivo" id="name">
+<br><br>
+<textarea id="texto" rows="10" cols="50" placeholder="Cole seu texto aqui"></textarea>
+<br><br>
+<button onclick="gerarPDF()">Gerar PDF</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script>
+function gerarPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const texto = document.getElementById("texto").value;
+
+  doc.text(texto, 10, 10);
+  name = document.getElementById("name").innerHTML()
+  doc.save(name + ".pdf");
+}
+</script>
+
+</body>
+</html>
