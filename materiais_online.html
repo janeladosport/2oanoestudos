@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Materiais de estudo — Painel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef1f5;color:#18202b}
+header{background:#18202b;color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:15px;position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:21px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+button{border:0;border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:600}
+.btn-primary{background:#2d7ff9;color:#fff}.btn-secondary{background:#3a4554;color:#fff}.btn-danger{background:#e55353;color:#fff}.btn-light{background:#e9edf2;color:#27303b}
+main{max-width:1250px;margin:25px auto;padding:0 20px 50px}
+.status{font-size:13px;color:#697585;margin-bottom:18px}
+#painelContainer{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.painel{background:#fff;border-radius:18px;padding:18px;box-shadow:0 5px 18px rgba(20,30,40,.09);border:1px solid #e0e5eb}
+.painel-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
+.painel h2{margin:0;font-size:19px}
+.acoes{display:flex;gap:5px}.acoes button{padding:6px 8px;font-size:12px}
+.botoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px}
+.link-btn{display:flex;align-items:center;justify-content:center;min-height:42px;padding:9px 12px;border-radius:10px;background:#f0f3f7;color:#202936;text-decoration:none;font-weight:600;text-align:center;transition:.15s}
+.link-btn:hover{background:#dfe7f0;transform:translateY(-1px)}
+.vazio{text-align:center;color:#697585;padding:70px 20px;grid-column:1/-1}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;align-items:center;justify-content:center;padding:20px}
+.modal-bg.ativo{display:flex}.modal{background:#fff;width:min(540px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:22px}
+.modal h2{margin-top:0}
+label{display:block;font-size:13px;font-weight:bold;margin:13px 0 6px}
+input{width:100%;padding:11px 12px;border:1px solid #ccd3dc;border-radius:9px;outline:none;font-size:15px}
+input:focus{border-color:#2d7ff9}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.lista-botoes{margin-top:15px;display:flex;flex-direction:column;gap:8px}
+.item-botao{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f3f5f8;padding:9px;border-radius:9px}
+.item-botao span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-acoes{display:flex;gap:5px;flex-shrink:0}.item-acoes button{padding:5px 8px;font-size:12px}
+hr{border:0;border-top:1px solid #e2e6eb;margin:20px 0}
+.login-info{font-size:13px;color:#697585;margin-top:5px}
+@media(max-width:600px){header{align-items:flex-start;flex-direction:column}#painelContainer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📚 Materiais de Estudo</h1>
+    <div id="loginStatus" class="login-info">Modo visitante</div>
+  </div>
+  <div class="toolbar">
+    <button id="novoPainelBtn" class="btn-primary" style="display:none" onclick="abrirNovoPainel()">+ Novo painel</button>
+    <button id="loginBtn" class="btn-secondary" onclick="abrirLogin()">Entrar</button>
+    <button id="logoutBtn" class="btn-secondary" style="display:none" onclick="sair()">Sair</button>
+  </div>
+</header>
+
+<main>
+  <div id="status" class="status">Carregando painéis...</div>
+  <div id="painelContainer"></div>
+</main>
+
+<!-- Login -->
+<div id="modalLogin" class="modal-bg">
+  <div class="modal">
+    <h2>Entrar como administrador</h2>
+    <label>E-mail</label>
+    <input id="loginEmail" type="email" autocomplete="email" placeholder="seu@email.com">
+    <label>Senha</label>
+    <input id="loginSenha" type="password" autocomplete="current-password" placeholder="Sua senha">
+    <div class="modal-actions">
+      <button class="btn-light" onclick="fecharModais()">Cancelar</button>
+      <button class="btn-primary" onclick="login()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel -->
+<div id="modalPainel" class="modal-bg">
+  <div class="modal">
+    <h2 id="tituloModal">Novo painel</h2>
+    <label>Título do painel</label>
+    <input id="nomePainel" placeholder="Ex.: Futebol, Estudos, Ferramentas...">
+
+    <div id="editorBotoes" style="display:none">
+      <hr><strong>Botões deste painel</strong>
+      <div id="listaBotoes" class="lista-botoes"></div>
+      <hr><strong>Adicionar botão</strong>
+      <label>Título</label>
+      <input id="nomeBotao" placeholder="Ex.: SofaScore">
+      <label>Link</label>
+      <input id="linkBotao" placeholder="https://www.exemplo.com">
+      <div style="margin-top:10px">
+        <button class="btn-primary" onclick="adicionarBotao()">+ Adicionar botão</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-light" onclick="fecharModais()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarPainel()">Salvar painel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = "https://yqmdvhssrafeqjioafyt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_aLJl34fwpBjeXVyvmn1F9w_BPajJrm2";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let paineis = [];
+let painelEditando = null;
+let souAdmin = false;
+
+function esc(v){
+  return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function linkSeguro(v){
+  try{
+    const u = new URL(v);
+    return (u.protocol === "http:" || u.protocol === "https:") ? u.href : "#";
+  }catch{return "#";}
+}
+
+async function verificarAdmin(){
+  const {data:{user}} = await db.auth.getUser();
+  souAdmin = false;
+  if(user){
+    const {data,error} = await db.from("admins").select("user_id").eq("user_id",user.id).maybeSingle();
+    souAdmin = !error && !!data;
+  }
+  atualizarCabecalho(user);
+}
+
+function atualizarCabecalho(user){
+  document.getElementById("novoPainelBtn").style.display = souAdmin ? "" : "none";
+  document.getElementById("loginBtn").style.display = souAdmin ? "none" : "";
+  document.getElementById("logoutBtn").style.display = souAdmin ? "" : "none";
+  document.getElementById("loginStatus").textContent = souAdmin
+    ? "Administrador conectado"
+    : (user ? "Usuário conectado — modo visitante" : "Modo visitante");
+}
+
+async function carregar(){
+  document.getElementById("status").textContent = "Carregando painéis...";
+  const {data:ps,error:e1} = await db.from("paineis").select("*").order("ordem",{ascending:true}).order("criado_em",{ascending:true});
+  if(e1){
+    console.error(e1);
+    document.getElementById("status").textContent = "Erro ao carregar os painéis. Confira as tabelas e as políticas do Supabase.";
+    return;
+  }
+
+  const {data:bs,error:e2} = await db.from("botoes").select("*").order("ordem",{ascending:true}).order("criado_em",{ascending:true});
+  if(e2){
+    console.error(e2);
+    document.getElementById("status").textContent = "Painéis carregados, mas houve erro ao carregar os botões.";
+    return;
+  }
+
+  paineis = (ps || []).map(p=>({...p,botoes:(bs||[]).filter(b=>b.painel_id===p.id)}));
+  document.getElementById("status").textContent = `${paineis.length} painel(is)`;
+  renderizar();
+}
+
+function renderizar(){
+  const c=document.getElementById("painelContainer");
+  if(!paineis.length){
+    c.innerHTML='<div class="vazio"><h2>Nenhum painel ainda</h2><p>O administrador pode criar o primeiro painel.</p></div>';
+    return;
+  }
+  c.innerHTML=paineis.map((p,pi)=>`
+    <section class="painel">
+      <div class="painel-topo">
+        <h2>${esc(p.titulo)}</h2>
+        ${souAdmin?`<div class="acoes">
+          <button class="btn-light" title="Editar" onclick="editarPainel(${pi})">✏️</button>
+          <button class="btn-danger" title="Excluir" onclick="excluirPainel(${pi})">🗑️</button>
+        </div>`:""}
+      </div>
+      <div class="botoes">
+        ${p.botoes.length ? p.botoes.map((b,bi)=>`
+          <div style="position:relative">
+            <a class="link-btn" href="${esc(linkSeguro(b.link))}" target="_blank" rel="noopener noreferrer">${esc(b.titulo)}</a>
+          </div>`).join("")
+          : '<div style="color:#788493;font-size:13px">Nenhum botão adicionado.</div>'}
+      </div>
+    </section>`).join("");
+}
+
+function abrirLogin(){document.getElementById("modalLogin").classList.add("ativo");document.getElementById("loginEmail").focus()}
+function abrirNovoPainel(){
+  painelEditando=null;
+  document.getElementById("tituloModal").textContent="Novo painel";
+  document.getElementById("nomePainel").value="";
+  document.getElementById("editorBotoes").style.display="none";
+  abrirPainelModal();
+}
+function abrirPainelModal(){document.getElementById("modalPainel").classList.add("ativo")}
+function fecharModais(){document.querySelectorAll(".modal-bg").forEach(x=>x.classList.remove("ativo"))}
+
+async function login(){
+  const email=document.getElementById("loginEmail").value.trim();
+  const password=document.getElementById("loginSenha").value;
+  if(!email||!password){alert("Preencha e-mail e senha.");return}
+  const {error}=await db.auth.signInWithPassword({email,password});
+  if(error){alert("Não foi possível entrar: "+error.message);return}
+  fecharModais();
+  await verificarAdmin();
+  await carregar();
+  if(!souAdmin) alert("O usuário entrou, mas não está cadastrado como administrador.");
+}
+
+async function sair(){
+  await db.auth.signOut();
+  souAdmin=false;
+  atualizarCabecalho(null);
+  renderizar();
+}
+
+function editarPainel(i){
+  if(!souAdmin)return;
+  painelEditando=i;
+  const p=paineis[i];
+  document.getElementById("tituloModal").textContent="Editar painel";
+  document.getElementById("nomePainel").value=p.titulo;
+  document.getElementById("editorBotoes").style.display="block";
+  document.getElementById("nomeBotao").value="";
+  document.getElementById("linkBotao").value="";
+  renderizarListaBotoes();
+  abrirPainelModal();
+}
+
+async function salvarPainel(){
+  if(!souAdmin)return;
+  const titulo=document.getElementById("nomePainel").value.trim();
+  if(!titulo){alert("Digite um título.");return}
+
+  if(painelEditando===null){
+    const ordem=paineis.length;
+    const {error}=await db.from("paineis").insert({titulo,ordem});
+    if(error){alert("Erro ao criar painel: "+error.message);return}
+  }else{
+    const id=paineis[painelEditando].id;
+    const {error}=await db.from("paineis").update({titulo}).eq("id",id);
+    if(error){alert("Erro ao editar painel: "+error.message);return}
+  }
+  fecharModais(); await carregar();
+}
+
+async function adicionarBotao(){
+  if(!souAdmin||painelEditando===null)return;
+  const titulo=document.getElementById("nomeBotao").value.trim();
+  let link=document.getElementById("linkBotao").value.trim();
+  if(!titulo||!link){alert("Preencha título e link.");return}
+  if(!/^https?:\/\//i.test(link))link="https://"+link;
+
+  const p=paineis[painelEditando];
+  const {error}=await db.from("botoes").insert({
+    painel_id:p.id,titulo,link,ordem:p.botoes.length
+  });
+  if(error){alert("Erro ao adicionar botão: "+error.message);return}
+  document.getElementById("nomeBotao").value="";
+  document.getElementById("linkBotao").value="";
+  await carregar();
+  painelEditando=paineis.findIndex(x=>x.id===p.id);
+  renderizarListaBotoes();
+}
+
+function renderizarListaBotoes(){
+  if(painelEditando===null)return;
+  const lista=document.getElementById("listaBotoes");
+  const p=paineis[painelEditando];
+  lista.innerHTML=p.botoes.length?p.botoes.map((b,i)=>`
+    <div class="item-botao">
+      <span title="${esc(b.link)}">${esc(b.titulo)}</span>
+      <div class="item-acoes">
+        <button class="btn-light" onclick="editarBotao(${i})">✏️</button>
+        <button class="btn-danger" onclick="excluirBotao(${i})">🗑️</button>
+      </div>
+    </div>`).join(""):'<small style="color:#788493">Nenhum botão neste painel.</small>';
+}
+
+async function editarBotao(i){
+  const p=paineis[painelEditando], b=p.botoes[i];
+  const titulo=prompt("Novo título:",b.titulo); if(titulo===null)return;
+  const link=prompt("Novo link:",b.link); if(link===null)return;
+  if(!titulo.trim()||!link.trim())return;
+  let novo=link.trim(); if(!/^https?:\/\//i.test(novo))novo="https://"+novo;
+  const {error}=await db.from("botoes").update({titulo:titulo.trim(),link:novo}).eq("id",b.id);
+  if(error){alert("Erro ao editar botão: "+error.message);return}
+  await carregar(); painelEditando=paineis.findIndex(x=>x.id===p.id); renderizarListaBotoes();
+}
+
+async function excluirBotao(i){
+  if(!confirm("Excluir este botão?"))return;
+  const b=paineis[painelEditando].botoes[i];
+  const {error}=await db.from("botoes").delete().eq("id",b.id);
+  if(error){alert("Erro ao excluir botão: "+error.message);return}
+  await carregar(); renderizarListaBotoes();
+}
+
+async function excluirPainel(i){
+  if(!confirm(`Excluir o painel "${paineis[i].titulo}" e seus botões?`))return;
+  const {error}=await db.from("paineis").delete().eq("id",paineis[i].id);
+  if(error){alert("Erro ao excluir painel: "+error.message);return}
+  await carregar();
+}
+
+document.querySelectorAll(".modal-bg").forEach(m=>m.addEventListener("click",e=>{if(e.target===m)fecharModais()}));
+document.getElementById("loginSenha").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+
+db.auth.onAuthStateChange(async()=>{await verificarAdmin();renderizar()});
+
+(async()=>{await verificarAdmin();await carregar()})();
+</script>
+</body>
+</html>
