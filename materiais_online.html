@@ -55,7 +55,7 @@ hr{border:0;border-top:1px solid #e2e6eb;margin:20px 0}
 
 <header>
   <div>
-    <h1>📚 Materiais de estudo</h1>
+    <h1>📚 Materiais de Estudo</h1>
     <div id="loginStatus" class="login-info">Modo visitante</div>
   </div>
   <div class="toolbar">
@@ -92,6 +92,8 @@ hr{border:0;border-top:1px solid #e2e6eb;margin:20px 0}
     <h2 id="tituloModalPasta">Nova pasta</h2>
     <label>Nome da pasta</label>
     <input id="nomePasta" placeholder="Ex.: Zoologia">
+    <label>Dentro de</label>
+    <select id="paiPasta"></select>
     <div class="modal-actions">
       <button class="btn-light" onclick="fecharModais()">Cancelar</button>
       <button class="btn-primary" onclick="salvarPasta()">Salvar pasta</button>
@@ -202,6 +204,18 @@ async function carregar(){
 }
 
 /* ---------- renderização ---------- */
+function filhas(id){ return pastas.filter(p => (p.pai_id || null) === id); }
+function descendentes(id){
+  let r = [];
+  filhas(id).forEach(f => { r.push(f.id); r = r.concat(descendentes(f.id)); });
+  return r;
+}
+function caminho(id){
+  const c = []; let p = pastas.find(x => x.id === id);
+  while(p){ c.unshift(p); p = pastas.find(x => x.id === p.pai_id); }
+  return c;
+}
+
 function htmlPainel(p){
   return `
     <section class="painel">
@@ -220,77 +234,100 @@ function htmlPainel(p){
     </section>`;
 }
 
+function htmlPasta(p){
+  const nf = filhas(p.id).length, np = paineis.filter(x => x.pasta_id === p.id).length;
+  return `<div class="pasta" onclick="abrirPasta('${p.id}')">
+    ${souAdmin ? `<div class="acoes">
+      <button class="btn-light" title="Editar" onclick="event.stopPropagation();editarPasta('${p.id}')">✏️</button>
+      <button class="btn-danger" title="Excluir" onclick="event.stopPropagation();excluirPasta('${p.id}')">🗑️</button>
+    </div>` : ""}
+    <div class="icone">📁</div><h3>${esc(p.titulo)}</h3>
+    <div class="muted">${nf} pasta(s), ${np} painel(is)</div></div>`;
+}
+
 function renderizar(){
-  const c = $("conteudo");
+  let pasta = pastaAtual ? pastas.find(x => x.id === pastaAtual) : null;
+  if(pastaAtual && !pasta) pastaAtual = null;
+  const sub = filhas(pasta ? pasta.id : null);
+  const ps = pasta ? paineis.filter(p => p.pasta_id === pasta.id) : paineis.filter(p => !p.pasta_id);
+  let html = "";
 
-  // Dentro de uma pasta
-  if(pastaAtual){
-    const pasta = pastas.find(x => x.id === pastaAtual);
-    if(!pasta){ pastaAtual = null; return renderizar(); }
-    const ps = paineis.filter(p => p.pasta_id === pasta.id);
-    c.innerHTML = `
-      <div style="margin-bottom:18px"><button class="btn-light" onclick="voltar()">← Voltar às pastas</button></div>
-      <div class="titulo-secao"><div><h2>📁 ${esc(pasta.titulo)}</h2><div class="muted">${ps.length} painel(is)</div></div></div>
-      <div id="painelContainer">${ps.length ? ps.map(htmlPainel).join("")
-        : '<div class="vazio"><h3>Esta pasta ainda não tem painéis</h3>'+(souAdmin?'<p>Use “+ Novo painel” para criar o primeiro.</p>':'')+'</div>'}</div>`;
-    return;
+  if(pasta){
+    const trilha = caminho(pasta.id).map(p => `<a href="#" onclick="abrirPasta('${p.id}');return false">${esc(p.titulo)}</a>`);
+    html += `<div style="margin-bottom:18px;display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+      <button class="btn-light" onclick="voltar()">← Voltar</button>
+      <div class="muted"><a href="#" onclick="abrirPasta(null);return false">Início</a> / ${trilha.join(" / ")}</div></div>
+      <div class="titulo-secao"><h2>📁 ${esc(pasta.titulo)}</h2></div>`;
   }
 
-  // Tela inicial: pastas + painéis sem pasta
-  const soltos = paineis.filter(p => !p.pasta_id);
-  let html = `<div class="titulo-secao"><div><h2>Pastas</h2><div class="muted">Selecione uma pasta para ver os painéis.</div></div></div>`;
-  html += pastas.length ? `<div class="grid-pastas">${pastas.map(p => {
-    const n = paineis.filter(x => x.pasta_id === p.id).length;
-    return `<div class="pasta" onclick="abrirPasta('${p.id}')">
-      ${souAdmin ? `<div class="acoes">
-        <button class="btn-light" title="Editar" onclick="event.stopPropagation();editarPasta('${p.id}')">✏️</button>
-        <button class="btn-danger" title="Excluir" onclick="event.stopPropagation();excluirPasta('${p.id}')">🗑️</button>
-      </div>` : ""}
-      <div class="icone">📁</div><h3>${esc(p.titulo)}</h3><div class="muted">${n} painel(is)</div></div>`;
-  }).join("")}</div>` : `<div class="grid-pastas"><div class="vazio" style="grid-column:1/-1">Nenhuma pasta criada ainda.</div></div>`;
-
-  if(soltos.length){
-    html += `<div class="titulo-secao"><div><h2>📦 Sem pasta</h2><div class="muted">Edite um painel para colocá-lo em uma pasta.</div></div></div>
-      <div id="painelContainer">${soltos.map(htmlPainel).join("")}</div>`;
+  if(sub.length){
+    html += `<div class="titulo-secao"><div><h2>${pasta ? "Subpastas" : "Pastas"}</h2>${pasta ? "" : '<div class="muted">Selecione uma pasta para ver os painéis.</div>'}</div></div>
+      <div class="grid-pastas">${sub.map(htmlPasta).join("")}</div>`;
+  }else if(!pasta){
+    html += `<div class="titulo-secao"><h2>Pastas</h2></div>
+      <div class="grid-pastas"><div class="vazio" style="grid-column:1/-1">Nenhuma pasta criada ainda.</div></div>`;
   }
-  c.innerHTML = html;
+
+  if(ps.length){
+    html += `<div class="titulo-secao"><div><h2>${pasta ? "Painéis" : "📦 Sem pasta"}</h2>${pasta ? "" : '<div class="muted">Edite um painel para colocá-lo em uma pasta.</div>'}</div></div>
+      <div id="painelContainer">${ps.map(htmlPainel).join("")}</div>`;
+  }else if(pasta && !sub.length){
+    html += `<div id="painelContainer"><div class="vazio"><h3>Esta pasta está vazia</h3>${souAdmin ? "<p>Crie uma subpasta ou um painel pelos botões do topo.</p>" : ""}</div></div>`;
+  }
+  $("conteudo").innerHTML = html;
 }
 
 function abrirPasta(id){ pastaAtual = id; renderizar(); scrollTo({top:0,behavior:"smooth"}); }
-function voltar(){ pastaAtual = null; renderizar(); }
+function voltar(){
+  const p = pastas.find(x => x.id === pastaAtual);
+  pastaAtual = p ? (p.pai_id || null) : null;
+  renderizar();
+}
 
 /* ---------- pastas ---------- */
+function preencherSelectPai(selecionado, excluir = []){
+  $("paiPasta").innerHTML = '<option value="">Nenhuma (pasta principal)</option>' +
+    pastas.filter(p => !excluir.includes(p.id)).map(p =>
+      `<option value="${p.id}" ${p.id === selecionado ? "selected" : ""}>📁 ${esc(caminho(p.id).map(x => x.titulo).join(" / "))}</option>`).join("");
+}
 function abrirPastaModal(){
   pastaEditando = null;
   $("tituloModalPasta").textContent = "Nova pasta";
   $("nomePasta").value = "";
+  preencherSelectPai(pastaAtual);   // já vem dentro da pasta aberta
   $("modalPasta").classList.add("ativo");
   $("nomePasta").focus();
 }
 function editarPasta(id){
   if(!souAdmin) return;
   pastaEditando = id;
+  const p = pastas.find(x => x.id === id);
   $("tituloModalPasta").textContent = "Editar pasta";
-  $("nomePasta").value = pastas.find(p => p.id === id).titulo;
+  $("nomePasta").value = p.titulo;
+  preencherSelectPai(p.pai_id, [id, ...descendentes(id)]);   // evita pasta dentro dela mesma
   $("modalPasta").classList.add("ativo");
 }
 async function salvarPasta(){
   if(!souAdmin) return;
   const titulo = $("nomePasta").value.trim();
+  const pai_id = $("paiPasta").value || null;
   if(!titulo){ alert("Digite o nome da pasta."); return; }
   const r = pastaEditando === null
-    ? await db.from("pastas").insert({titulo, ordem: pastas.length})
-    : await db.from("pastas").update({titulo}).eq("id", pastaEditando);
+    ? await db.from("pastas").insert({titulo, pai_id, ordem: pastas.length})
+    : await db.from("pastas").update({titulo, pai_id}).eq("id", pastaEditando);
   if(r.error){ alert("Erro ao salvar pasta: "+r.error.message); return; }
   fecharModais(); await carregar();
 }
 async function excluirPasta(id){
   const p = pastas.find(x => x.id === id);
-  const n = paineis.filter(x => x.pasta_id === id).length;
-  if(!confirm(`Excluir a pasta "${p.titulo}"?`+(n ? ` Os ${n} painel(is) dentro dela e seus botões também serão excluídos.` : ""))) return;
+  const ids = [id, ...descendentes(id)];
+  const nf = ids.length - 1, np = paineis.filter(x => ids.includes(x.pasta_id)).length;
+  let aviso = "";
+  if(nf || np) aviso = ` Isso também exclui ${nf} subpasta(s) e ${np} painel(is) com seus botões.`;
+  if(!confirm(`Excluir a pasta "${p.titulo}"?${aviso}`)) return;
   const r = await db.from("pastas").delete().eq("id", id);
   if(r.error){ alert("Erro ao excluir pasta: "+r.error.message); return; }
-  if(pastaAtual === id) pastaAtual = null;
+  if(ids.includes(pastaAtual)) pastaAtual = p.pai_id || null;
   await carregar();
 }
 
