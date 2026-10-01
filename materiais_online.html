@@ -1,14 +1,398 @@
 <!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Materiais de estudo — Painel</title><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<style>*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#18202a}header{background:#111827;color:#fff;padding:22px 28px;display:flex;justify-content:space-between;align-items:center;gap:15px}header h1{margin:0;font-size:25px}header p{margin:5px 0 0;color:#cbd5e1;font-size:14px}.container{max-width:1100px;margin:28px auto;padding:0 18px}.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;gap:12px;flex-wrap:wrap}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}button{border:0;border-radius:10px;padding:10px 14px;cursor:pointer;font-weight:600}.primary{background:#111827;color:#fff}.secondary{background:#e5e7eb;color:#111827}.danger{background:#fee2e2;color:#991b1b}.small{padding:7px 10px;font-size:13px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(245px,1fr));gap:18px}.card{background:#fff;border-radius:18px;padding:20px;box-shadow:0 5px 18px #00000012;border:1px solid #e5e7eb}.folder{cursor:pointer;transition:.15s}.folder:hover{transform:translateY(-2px);box-shadow:0 8px 24px #00000018}.folder-icon{font-size:38px}.card h2{margin:10px 0 6px;font-size:20px}.muted{color:#6b7280;font-size:14px}.back{margin-bottom:18px}.links{display:flex;flex-direction:column;gap:10px;margin-top:15px}.linkbtn{display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border:1px solid #e5e7eb;padding:13px 15px;border-radius:12px;color:#111827;text-decoration:none}.linkbtn:hover{background:#eef2ff}.admin-section{margin-top:30px}.admin-section h2{font-size:19px}.admin-folder{background:#fff;border:1px solid #e5e7eb;border-radius:15px;margin-bottom:12px;overflow:hidden}.admin-folder-head{padding:15px 17px;display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fafafa}.admin-buttons{padding:10px 17px 16px}.admin-button{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #eee}.admin-button:last-child{border-bottom:0}.modal-bg{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}.modal{background:#fff;width:min(500px,100%);border-radius:18px;padding:22px}.modal h2{margin-top:0}.field{margin:12px 0}.field label{display:block;font-size:13px;font-weight:700;margin-bottom:6px}input,select{width:100%;padding:11px;border:1px solid #d1d5db;border-radius:9px;font:inherit}.status{font-size:13px;color:#6b7280;margin-top:12px;min-height:18px}.empty{background:#fff;border:1px dashed #cbd5e1;border-radius:16px;padding:25px;text-align:center;color:#64748b}.hidden{display:none!important}.notice{padding:12px 15px;border-radius:10px;background:#fff7ed;color:#9a3412;margin-bottom:18px;font-size:14px}@media(max-width:600px){header{padding:18px}.container{margin-top:18px}.admin-folder-head{align-items:flex-start;flex-direction:column}}</style></head>
-<body><header><div><h1>Materiais de Estudo</h1><p>Painel de materiais</p></div><div class="row"><button id="loginBtn" class="secondary small">Entrar como administrador</button><button id="logoutBtn" class="secondary small hidden">Sair</button></div></header>
-<main class="container"><div id="notice" class="notice hidden"></div><div id="publicView"></div><section id="adminView" class="admin-section hidden"><div class="toolbar"><h2>Administração</h2><div class="row"><button class="primary small" onclick="abrirPastaModal()">+ Nova pasta</button><button class="secondary small" onclick="abrirBotaoModal()">+ Novo botão</button></div></div><div id="adminList"></div></section></main><div id="modalBg" class="modal-bg"><div class="modal" id="modal"></div></div>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Janela do Sport — Painel</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#eef1f5;color:#18202b}
+header{background:#18202b;color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:15px;position:sticky;top:0;z-index:10}
+header h1{margin:0;font-size:21px}
+.login-info{font-size:13px;color:#a9b4c2;margin-top:5px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+button{border:0;border-radius:9px;padding:9px 13px;cursor:pointer;font-weight:600}
+.btn-primary{background:#2d7ff9;color:#fff}.btn-secondary{background:#3a4554;color:#fff}.btn-danger{background:#e55353;color:#fff}.btn-light{background:#e9edf2;color:#27303b}
+.hidden{display:none!important}
+main{max-width:1250px;margin:25px auto;padding:0 20px 50px}
+.status{font-size:13px;color:#697585;margin-bottom:18px}
+.titulo-secao{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+.titulo-secao h2{margin:0;font-size:22px}
+.muted{color:#697585;font-size:14px}
+.grid-pastas{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:18px;margin-bottom:34px}
+.pasta{background:#fff;border-radius:18px;padding:20px;border:1px solid #e0e5eb;box-shadow:0 5px 18px rgba(20,30,40,.09);cursor:pointer;transition:.15s;position:relative}
+.pasta:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(20,30,40,.15)}
+.pasta .icone{font-size:38px}
+.pasta h3{margin:10px 0 6px;font-size:20px}
+.pasta .acoes{position:absolute;top:12px;right:12px}
+#painelContainer{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.painel{background:#fff;border-radius:18px;padding:18px;box-shadow:0 5px 18px rgba(20,30,40,.09);border:1px solid #e0e5eb}
+.painel-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
+.painel h2{margin:0;font-size:19px}
+.acoes{display:flex;gap:5px}.acoes button{padding:6px 8px;font-size:12px}
+.botoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px}
+.link-btn{display:flex;align-items:center;justify-content:center;min-height:42px;padding:9px 12px;border-radius:10px;background:#f0f3f7;color:#202936;text-decoration:none;font-weight:600;text-align:center;transition:.15s}
+.link-btn:hover{background:#dfe7f0;transform:translateY(-1px)}
+.vazio{text-align:center;color:#697585;padding:50px 20px;grid-column:1/-1;background:#fff;border:1px dashed #cbd5e1;border-radius:16px}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:50;align-items:center;justify-content:center;padding:20px}
+.modal-bg.ativo{display:flex}
+.modal{background:#fff;width:min(540px,100%);max-height:90vh;overflow:auto;border-radius:18px;padding:22px}
+.modal h2{margin-top:0}
+label{display:block;font-size:13px;font-weight:bold;margin:13px 0 6px}
+input,select{width:100%;padding:11px 12px;border:1px solid #ccd3dc;border-radius:9px;outline:none;font-size:15px;font-family:inherit}
+input:focus,select:focus{border-color:#2d7ff9}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.lista-botoes{margin-top:15px;display:flex;flex-direction:column;gap:8px}
+.item-botao{display:flex;align-items:center;justify-content:space-between;gap:8px;background:#f3f5f8;padding:9px;border-radius:9px}
+.item-botao span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item-acoes{display:flex;gap:5px;flex-shrink:0}.item-acoes button{padding:5px 8px;font-size:12px}
+hr{border:0;border-top:1px solid #e2e6eb;margin:20px 0}
+@media(max-width:600px){header{align-items:flex-start;flex-direction:column}#painelContainer{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>📚 Janela do Sport</h1>
+    <div id="loginStatus" class="login-info">Modo visitante</div>
+  </div>
+  <div class="toolbar">
+    <button id="novaPastaBtn" class="btn-primary hidden" onclick="abrirPastaModal()">+ Nova pasta</button>
+    <button id="novoPainelBtn" class="btn-primary hidden" onclick="abrirNovoPainel()">+ Novo painel</button>
+    <button id="loginBtn" class="btn-secondary" onclick="abrirLogin()">Entrar</button>
+    <button id="logoutBtn" class="btn-secondary hidden" onclick="sair()">Sair</button>
+  </div>
+</header>
+
+<main>
+  <div id="status" class="status">Carregando...</div>
+  <div id="conteudo"></div>
+</main>
+
+<!-- Login -->
+<div id="modalLogin" class="modal-bg">
+  <div class="modal">
+    <h2>Entrar como administrador</h2>
+    <label>E-mail</label>
+    <input id="loginEmail" type="email" autocomplete="email" placeholder="seu@email.com">
+    <label>Senha</label>
+    <input id="loginSenha" type="password" autocomplete="current-password" placeholder="Sua senha">
+    <div class="modal-actions">
+      <button class="btn-light" onclick="fecharModais()">Cancelar</button>
+      <button class="btn-primary" onclick="login()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pasta -->
+<div id="modalPasta" class="modal-bg">
+  <div class="modal">
+    <h2 id="tituloModalPasta">Nova pasta</h2>
+    <label>Nome da pasta</label>
+    <input id="nomePasta" placeholder="Ex.: Zoologia">
+    <div class="modal-actions">
+      <button class="btn-light" onclick="fecharModais()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarPasta()">Salvar pasta</button>
+    </div>
+  </div>
+</div>
+
+<!-- Painel -->
+<div id="modalPainel" class="modal-bg">
+  <div class="modal">
+    <h2 id="tituloModal">Novo painel</h2>
+    <label>Título do painel</label>
+    <input id="nomePainel" placeholder="Ex.: Futebol, Estudos, Ferramentas...">
+    <label>Pasta</label>
+    <select id="pastaPainel"></select>
+
+    <div id="editorBotoes" class="hidden">
+      <hr><strong>Botões deste painel</strong>
+      <div id="listaBotoes" class="lista-botoes"></div>
+      <hr><strong>Adicionar botão</strong>
+      <label>Título</label>
+      <input id="nomeBotao" placeholder="Ex.: SofaScore">
+      <label>Link</label>
+      <input id="linkBotao" placeholder="https://www.exemplo.com">
+      <div style="margin-top:10px">
+        <button class="btn-primary" onclick="adicionarBotao()">+ Adicionar botão</button>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-light" onclick="fecharModais()">Cancelar</button>
+      <button class="btn-primary" onclick="salvarPainel()">Salvar painel</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const SUPABASE_URL="https://yqmdvhssrafeqjioafyt.supabase.co",SUPABASE_KEY="sb_publishable_aLJl34fwpBjeXVyvmn1F9w_BPajJrm2",db=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);let pastas=[],botoes=[],admin=false,pastaAtual=null;const $=id=>document.getElementById(id);function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}function safeUrl(x){try{let u=new URL(x);return ['http:','https:'].includes(u.protocol)?u.href:'#'}catch(e){return '#'}}function showError(e){console.error(e);$('notice').textContent='Erro: '+(e.message||'não foi possível carregar os dados.');$('notice').classList.remove('hidden')}function closeModal(){$('modalBg').style.display='none';$('modal').innerHTML=''}$('modalBg').onclick=e=>{if(e.target.id==='modalBg')closeModal()};
-async function carregar(){try{$('notice').classList.add('hidden');let p=await db.from('pastas').select('*').order('ordem').order('criado_em');if(p.error)throw p.error;let b=await db.from('botoes').select('*').order('ordem').order('criado_em');if(b.error)throw b.error;pastas=p.data||[];botoes=b.data||[];renderPublic();if(admin)renderAdmin()}catch(e){showError(e)}}async function verificarAdmin(){let {data:{session}}=await db.auth.getSession();admin=false;if(session?.user){let r=await db.from('admins').select('user_id').eq('user_id',session.user.id).maybeSingle();if(!r.error&&r.data)admin=true}$('loginBtn').classList.toggle('hidden',admin);$('logoutBtn').classList.toggle('hidden',!admin);$('adminView').classList.toggle('hidden',!admin);if(admin)renderAdmin()}
-function renderPublic(){let root=$('publicView');if(pastaAtual){let p=pastas.find(x=>x.id===pastaAtual);if(!p){pastaAtual=null;return renderPublic()}let items=botoes.filter(b=>b.pasta_id===p.id);root.innerHTML='<div class="back"><button class="secondary small" onclick="voltarPastas()">← Voltar</button></div><div class="toolbar"><div><h2 style="margin:0">📁 '+esc(p.titulo)+'</h2><div class="muted">'+items.length+' material(is)</div></div></div>'+(items.length?'<div class="links">'+items.map(b=>'<a class="linkbtn" href="'+esc(safeUrl(b.link))+'" target="_blank" rel="noopener"><span>📄 '+esc(b.titulo)+'</span><span>↗</span></a>').join('')+'</div>':'<div class="empty">Esta pasta ainda não possui botões.</div>');return}root.innerHTML='<div class="toolbar"><div><h2 style="margin:0">Pastas</h2><div class="muted">Selecione uma pasta para acessar os materiais.</div></div></div>'+(pastas.length?'<div class="grid">'+pastas.map(p=>{let n=botoes.filter(b=>b.pasta_id===p.id).length;return '<div class="card folder" onclick="abrirPasta(\''+p.id+'\')"><div class="folder-icon">📁</div><h2>'+esc(p.titulo)+'</h2><div class="muted">'+n+' material(is)</div></div>'}).join('')+'</div>':'<div class="empty">Nenhuma pasta criada ainda.</div>')}function abrirPasta(id){pastaAtual=id;renderPublic();scrollTo({top:0,behavior:'smooth'})}function voltarPastas(){pastaAtual=null;renderPublic()}
-function renderAdmin(){let root=$('adminList'),html='';if(!pastas.length)html='<div class="empty">Crie sua primeira pasta.</div>';pastas.forEach(p=>{let items=botoes.filter(b=>b.pasta_id===p.id);html+='<div class="admin-folder"><div class="admin-folder-head"><div><strong>📁 '+esc(p.titulo)+'</strong><div class="muted">'+items.length+' botão(ões)</div></div><div class="row"><button class="secondary small" onclick="abrirPastaModal(\''+p.id+'\')">Editar</button><button class="danger small" onclick="excluirPasta(\''+p.id+'\')">Excluir</button><button class="primary small" onclick="abrirBotaoModal(null,\''+p.id+'\')">+ Botão</button><button class="secondary small" onclick="moverSemPasta(\''+p.id+'\')">Adicionar sem pasta</button></div></div><div class="admin-buttons">'+(items.length?items.map(b=>'<div class="admin-button"><span>📄 '+esc(b.titulo)+'</span><span class="row"><button class="secondary small" onclick="abrirBotaoModal(\''+b.id+'\')">Editar</button><button class="danger small" onclick="excluirBotao(\''+b.id+'\')">Excluir</button></span></div>').join(''):'<div class="muted">Nenhum botão nesta pasta.</div>')+'</div></div>'});let sem=botoes.filter(b=>!b.pasta_id);if(sem.length)html+='<div class="admin-folder"><div class="admin-folder-head"><div><strong>📦 Sem pasta</strong><div class="muted">'+sem.length+' botão(ões)</div></div></div><div class="admin-buttons">'+sem.map(b=>'<div class="admin-button"><span>📄 '+esc(b.titulo)+'</span><span class="row"><button class="secondary small" onclick="abrirBotaoModal(\''+b.id+'\')">Editar / colocar em pasta</button><button class="danger small" onclick="excluirBotao(\''+b.id+'\')">Excluir</button></span></div>').join('')+'</div></div>';root.innerHTML=html}
-function abrirPastaModal(id=null){let p=id?pastas.find(x=>x.id===id):null;$('modal').innerHTML='<h2>'+(p?'Editar pasta':'Nova pasta')+'</h2><div class="field"><label>Nome da pasta</label><input id="pastaTitulo" value="'+esc(p?.titulo||'')+'" placeholder="Ex.: Zoologia"></div><div class="row"><button class="primary" onclick="salvarPasta(\''+(id||'')+'\')">Salvar</button><button class="secondary" onclick="closeModal()">Cancelar</button></div>';$('modalBg').style.display='flex'}async function salvarPasta(id){let titulo=$('pastaTitulo').value.trim();if(!titulo)return alert('Digite o nome da pasta.');let r=id?await db.from('pastas').update({titulo}).eq('id',id):await db.from('pastas').insert({titulo,ordem:pastas.length});if(r.error)return alert(r.error.message);closeModal();carregar()}async function excluirPasta(id){let p=pastas.find(x=>x.id===id);if(!confirm('Excluir a pasta "'+p?.titulo+'"? Os botões dentro dela também serão excluídos por ON DELETE CASCADE.'))return;let r=await db.from('pastas').delete().eq('id',id);if(r.error)return alert(r.error.message);if(pastaAtual===id)pastaAtual=null;carregar()}async function moverSemPasta(id){let sem=botoes.filter(b=>!b.pasta_id);if(!sem.length)return alert('Não há botões sem pasta.');if(!confirm('Colocar '+sem.length+' botão(ões) sem pasta dentro desta pasta?'))return;for(const b of sem){let r=await db.from('botoes').update({pasta_id:id}).eq('id',b.id);if(r.error)return alert(r.error.message)}carregar()}
-function abrirBotaoModal(id=null,pastaPadrao=''){let b=id?botoes.find(x=>x.id===id):null;$('modal').innerHTML='<h2>'+(b?'Editar botão':'Novo botão')+'</h2><div class="field"><label>Título</label><input id="botaoTitulo" value="'+esc(b?.titulo||'')+'" placeholder="Ex.: Aula de Zoologia"></div><div class="field"><label>Link</label><input id="botaoLink" value="'+esc(b?.link||'')+'" placeholder="https://..."></div><div class="field"><label>Pasta</label><select id="botaoPasta"><option value="">Sem pasta</option>'+pastas.map(p=>'<option value="'+p.id+'" '+((b?.pasta_id||pastaPadrao)===p.id?'selected':'')+'>📁 '+esc(p.titulo)+'</option>').join('')+'</select></div><div class="row"><button class="primary" onclick="salvarBotao(\''+(id||'')+'\')">Salvar</button><button class="secondary" onclick="closeModal()">Cancelar</button></div>';$('modalBg').style.display='flex'}async function salvarBotao(id){let titulo=$('botaoTitulo').value.trim(),link=$('botaoLink').value.trim(),pasta_id=$('botaoPasta').value||null;if(!titulo||!link)return alert('Preencha título e link.');if(safeUrl(link)==='#')return alert('Use um link começando com http:// ou https://');let r=id?await db.from('botoes').update({titulo,link,pasta_id}).eq('id',id):await db.from('botoes').insert({titulo,link,pasta_id,ordem:botoes.length});if(r.error)return alert(r.error.message);closeModal();carregar()}async function excluirBotao(id){let b=botoes.find(x=>x.id===id);if(!confirm('Excluir o botão "'+b?.titulo+'"?'))return;let r=await db.from('botoes').delete().eq('id',id);if(r.error)return alert(r.error.message);carregar()}
-$('loginBtn').onclick=()=>{$('modal').innerHTML='<h2>Login de administrador</h2><div class="field"><label>E-mail</label><input id="email" type="email"></div><div class="field"><label>Senha</label><input id="senha" type="password"></div><div class="row"><button class="primary" onclick="login()">Entrar</button><button class="secondary" onclick="closeModal()">Cancelar</button></div><div id="loginStatus" class="status"></div>';$('modalBg').style.display='flex'};async function login(){let r=await db.auth.signInWithPassword({email:$('email').value,password:$('senha').value});if(r.error){$('loginStatus').textContent=r.error.message;return}closeModal();await verificarAdmin();carregar()}$('logoutBtn').onclick=async()=>{await db.auth.signOut();admin=false;pastaAtual=null;await verificarAdmin();carregar()};db.auth.onAuthStateChange(()=>setTimeout(verificarAdmin,0));(async()=>{await verificarAdmin();await carregar()})();
-</script></body></html>
+const SUPABASE_URL = "https://yqmdvhssrafeqjioafyt.supabase.co";
+const SUPABASE_KEY = "sb_publishable_aLJl34fwpBjeXVyvmn1F9w_BPajJrm2";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const $ = id => document.getElementById(id);
+let pastas = [], paineis = [];
+let pastaAtual = null;      // id da pasta aberta (null = tela inicial)
+let pastaEditando = null;   // id da pasta no modal (null = nova)
+let painelEditando = null;  // id do painel no modal (null = novo)
+let souAdmin = false;
+
+function esc(v){
+  return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
+function linkSeguro(v){
+  try{ const u = new URL(v); return (u.protocol==="http:"||u.protocol==="https:") ? u.href : "#"; }
+  catch{ return "#"; }
+}
+
+/* ---------- login ---------- */
+async function verificarAdmin(){
+  const {data:{user}} = await db.auth.getUser();
+  souAdmin = false;
+  if(user){
+    const {data,error} = await db.from("admins").select("user_id").eq("user_id",user.id).maybeSingle();
+    souAdmin = !error && !!data;
+  }
+  $("novaPastaBtn").classList.toggle("hidden", !souAdmin);
+  $("novoPainelBtn").classList.toggle("hidden", !souAdmin);
+  $("loginBtn").classList.toggle("hidden", souAdmin);
+  $("logoutBtn").classList.toggle("hidden", !souAdmin);
+  $("loginStatus").textContent = souAdmin ? "Administrador conectado"
+    : (user ? "Usuário conectado — modo visitante" : "Modo visitante");
+}
+function abrirLogin(){ $("modalLogin").classList.add("ativo"); $("loginEmail").focus(); }
+function fecharModais(){ document.querySelectorAll(".modal-bg").forEach(x=>x.classList.remove("ativo")); }
+
+async function login(){
+  const email = $("loginEmail").value.trim(), password = $("loginSenha").value;
+  if(!email||!password){ alert("Preencha e-mail e senha."); return; }
+  const {error} = await db.auth.signInWithPassword({email,password});
+  if(error){ alert("Não foi possível entrar: "+error.message); return; }
+  fecharModais();
+  await verificarAdmin();
+  renderizar();
+  if(!souAdmin) alert("O usuário entrou, mas não está cadastrado como administrador.");
+}
+async function sair(){
+  await db.auth.signOut();
+  pastaAtual = null;
+  await verificarAdmin();
+  renderizar();
+}
+
+/* ---------- carregar ---------- */
+async function carregar(){
+  $("status").textContent = "Carregando...";
+  const r1 = await db.from("pastas").select("*").order("ordem",{ascending:true}).order("criado_em",{ascending:true});
+  if(r1.error){ console.error(r1.error); $("status").textContent = "Erro ao carregar as pastas: "+r1.error.message; return; }
+  const r2 = await db.from("paineis").select("*").order("ordem",{ascending:true}).order("criado_em",{ascending:true});
+  if(r2.error){ console.error(r2.error); $("status").textContent = "Erro ao carregar os painéis: "+r2.error.message; return; }
+  const r3 = await db.from("botoes").select("*").order("ordem",{ascending:true}).order("criado_em",{ascending:true});
+  if(r3.error){ console.error(r3.error); $("status").textContent = "Erro ao carregar os botões: "+r3.error.message; return; }
+
+  pastas = r1.data || [];
+  const bs = r3.data || [];
+  paineis = (r2.data || []).map(p => ({...p, botoes: bs.filter(b => b.painel_id === p.id)}));
+  $("status").textContent = "";
+  renderizar();
+}
+
+/* ---------- renderização ---------- */
+function htmlPainel(p){
+  return `
+    <section class="painel">
+      <div class="painel-topo">
+        <h2>${esc(p.titulo)}</h2>
+        ${souAdmin ? `<div class="acoes">
+          <button class="btn-light" title="Editar" onclick="editarPainel('${p.id}')">✏️</button>
+          <button class="btn-danger" title="Excluir" onclick="excluirPainel('${p.id}')">🗑️</button>
+        </div>` : ""}
+      </div>
+      <div class="botoes">
+        ${p.botoes.length ? p.botoes.map(b => `
+          <a class="link-btn" href="${esc(linkSeguro(b.link))}" target="_blank" rel="noopener noreferrer">${esc(b.titulo)}</a>`).join("")
+          : '<div class="muted">Nenhum botão adicionado.</div>'}
+      </div>
+    </section>`;
+}
+
+function renderizar(){
+  const c = $("conteudo");
+
+  // Dentro de uma pasta
+  if(pastaAtual){
+    const pasta = pastas.find(x => x.id === pastaAtual);
+    if(!pasta){ pastaAtual = null; return renderizar(); }
+    const ps = paineis.filter(p => p.pasta_id === pasta.id);
+    c.innerHTML = `
+      <div style="margin-bottom:18px"><button class="btn-light" onclick="voltar()">← Voltar às pastas</button></div>
+      <div class="titulo-secao"><div><h2>📁 ${esc(pasta.titulo)}</h2><div class="muted">${ps.length} painel(is)</div></div></div>
+      <div id="painelContainer">${ps.length ? ps.map(htmlPainel).join("")
+        : '<div class="vazio"><h3>Esta pasta ainda não tem painéis</h3>'+(souAdmin?'<p>Use “+ Novo painel” para criar o primeiro.</p>':'')+'</div>'}</div>`;
+    return;
+  }
+
+  // Tela inicial: pastas + painéis sem pasta
+  const soltos = paineis.filter(p => !p.pasta_id);
+  let html = `<div class="titulo-secao"><div><h2>Pastas</h2><div class="muted">Selecione uma pasta para ver os painéis.</div></div></div>`;
+  html += pastas.length ? `<div class="grid-pastas">${pastas.map(p => {
+    const n = paineis.filter(x => x.pasta_id === p.id).length;
+    return `<div class="pasta" onclick="abrirPasta('${p.id}')">
+      ${souAdmin ? `<div class="acoes">
+        <button class="btn-light" title="Editar" onclick="event.stopPropagation();editarPasta('${p.id}')">✏️</button>
+        <button class="btn-danger" title="Excluir" onclick="event.stopPropagation();excluirPasta('${p.id}')">🗑️</button>
+      </div>` : ""}
+      <div class="icone">📁</div><h3>${esc(p.titulo)}</h3><div class="muted">${n} painel(is)</div></div>`;
+  }).join("")}</div>` : `<div class="grid-pastas"><div class="vazio" style="grid-column:1/-1">Nenhuma pasta criada ainda.</div></div>`;
+
+  if(soltos.length){
+    html += `<div class="titulo-secao"><div><h2>📦 Sem pasta</h2><div class="muted">Edite um painel para colocá-lo em uma pasta.</div></div></div>
+      <div id="painelContainer">${soltos.map(htmlPainel).join("")}</div>`;
+  }
+  c.innerHTML = html;
+}
+
+function abrirPasta(id){ pastaAtual = id; renderizar(); scrollTo({top:0,behavior:"smooth"}); }
+function voltar(){ pastaAtual = null; renderizar(); }
+
+/* ---------- pastas ---------- */
+function abrirPastaModal(){
+  pastaEditando = null;
+  $("tituloModalPasta").textContent = "Nova pasta";
+  $("nomePasta").value = "";
+  $("modalPasta").classList.add("ativo");
+  $("nomePasta").focus();
+}
+function editarPasta(id){
+  if(!souAdmin) return;
+  pastaEditando = id;
+  $("tituloModalPasta").textContent = "Editar pasta";
+  $("nomePasta").value = pastas.find(p => p.id === id).titulo;
+  $("modalPasta").classList.add("ativo");
+}
+async function salvarPasta(){
+  if(!souAdmin) return;
+  const titulo = $("nomePasta").value.trim();
+  if(!titulo){ alert("Digite o nome da pasta."); return; }
+  const r = pastaEditando === null
+    ? await db.from("pastas").insert({titulo, ordem: pastas.length})
+    : await db.from("pastas").update({titulo}).eq("id", pastaEditando);
+  if(r.error){ alert("Erro ao salvar pasta: "+r.error.message); return; }
+  fecharModais(); await carregar();
+}
+async function excluirPasta(id){
+  const p = pastas.find(x => x.id === id);
+  const n = paineis.filter(x => x.pasta_id === id).length;
+  if(!confirm(`Excluir a pasta "${p.titulo}"?`+(n ? ` Os ${n} painel(is) dentro dela e seus botões também serão excluídos.` : ""))) return;
+  const r = await db.from("pastas").delete().eq("id", id);
+  if(r.error){ alert("Erro ao excluir pasta: "+r.error.message); return; }
+  if(pastaAtual === id) pastaAtual = null;
+  await carregar();
+}
+
+/* ---------- painéis ---------- */
+function preencherSelectPastas(selecionada){
+  $("pastaPainel").innerHTML = '<option value="">Sem pasta</option>' +
+    pastas.map(p => `<option value="${p.id}" ${p.id===selecionada?"selected":""}>📁 ${esc(p.titulo)}</option>`).join("");
+}
+function abrirNovoPainel(){
+  painelEditando = null;
+  $("tituloModal").textContent = "Novo painel";
+  $("nomePainel").value = "";
+  preencherSelectPastas(pastaAtual);   // já vem na pasta aberta
+  $("editorBotoes").classList.add("hidden");
+  $("modalPainel").classList.add("ativo");
+  $("nomePainel").focus();
+}
+function editarPainel(id){
+  if(!souAdmin) return;
+  painelEditando = id;
+  const p = paineis.find(x => x.id === id);
+  $("tituloModal").textContent = "Editar painel";
+  $("nomePainel").value = p.titulo;
+  preencherSelectPastas(p.pasta_id);
+  $("editorBotoes").classList.remove("hidden");
+  $("nomeBotao").value = ""; $("linkBotao").value = "";
+  renderizarListaBotoes();
+  $("modalPainel").classList.add("ativo");
+}
+async function salvarPainel(){
+  if(!souAdmin) return;
+  const titulo = $("nomePainel").value.trim();
+  const pasta_id = $("pastaPainel").value || null;
+  if(!titulo){ alert("Digite um título."); return; }
+  const r = painelEditando === null
+    ? await db.from("paineis").insert({titulo, pasta_id, ordem: paineis.length})
+    : await db.from("paineis").update({titulo, pasta_id}).eq("id", painelEditando);
+  if(r.error){ alert("Erro ao salvar painel: "+r.error.message); return; }
+  fecharModais(); await carregar();
+}
+async function excluirPainel(id){
+  const p = paineis.find(x => x.id === id);
+  if(!confirm(`Excluir o painel "${p.titulo}" e seus botões?`)) return;
+  const r = await db.from("paineis").delete().eq("id", id);
+  if(r.error){ alert("Erro ao excluir painel: "+r.error.message); return; }
+  await carregar();
+}
+
+/* ---------- botões ---------- */
+function renderizarListaBotoes(){
+  if(painelEditando === null) return;
+  const p = paineis.find(x => x.id === painelEditando);
+  $("listaBotoes").innerHTML = p.botoes.length ? p.botoes.map(b => `
+    <div class="item-botao">
+      <span title="${esc(b.link)}">${esc(b.titulo)}</span>
+      <div class="item-acoes">
+        <button class="btn-light" onclick="editarBotao('${b.id}')">✏️</button>
+        <button class="btn-danger" onclick="excluirBotao('${b.id}')">🗑️</button>
+      </div>
+    </div>`).join("") : '<small class="muted">Nenhum botão neste painel.</small>';
+}
+async function recarregarMantendoModal(){
+  const id = painelEditando;
+  await carregar();
+  painelEditando = id;
+  renderizarListaBotoes();
+}
+async function adicionarBotao(){
+  if(!souAdmin || painelEditando === null) return;
+  const titulo = $("nomeBotao").value.trim();
+  let link = $("linkBotao").value.trim();
+  if(!titulo || !link){ alert("Preencha título e link."); return; }
+  if(!/^https?:\/\//i.test(link)) link = "https://" + link;
+  const p = paineis.find(x => x.id === painelEditando);
+  const {error} = await db.from("botoes").insert({painel_id: p.id, titulo, link, ordem: p.botoes.length});
+  if(error){ alert("Erro ao adicionar botão: "+error.message); return; }
+  $("nomeBotao").value = ""; $("linkBotao").value = "";
+  await recarregarMantendoModal();
+}
+async function editarBotao(id){
+  const p = paineis.find(x => x.id === painelEditando);
+  const b = p.botoes.find(x => x.id === id);
+  const titulo = prompt("Novo título:", b.titulo); if(titulo === null) return;
+  const link = prompt("Novo link:", b.link); if(link === null) return;
+  if(!titulo.trim() || !link.trim()) return;
+  let novo = link.trim(); if(!/^https?:\/\//i.test(novo)) novo = "https://" + novo;
+  const {error} = await db.from("botoes").update({titulo: titulo.trim(), link: novo}).eq("id", id);
+  if(error){ alert("Erro ao editar botão: "+error.message); return; }
+  await recarregarMantendoModal();
+}
+async function excluirBotao(id){
+  if(!confirm("Excluir este botão?")) return;
+  const {error} = await db.from("botoes").delete().eq("id", id);
+  if(error){ alert("Erro ao excluir botão: "+error.message); return; }
+  await recarregarMantendoModal();
+}
+
+/* ---------- eventos ---------- */
+document.querySelectorAll(".modal-bg").forEach(m => m.addEventListener("click", e => { if(e.target === m) fecharModais(); }));
+$("loginSenha").addEventListener("keydown", e => { if(e.key === "Enter") login(); });
+db.auth.onAuthStateChange(() => setTimeout(async () => { await verificarAdmin(); renderizar(); }, 0));
+(async () => { await verificarAdmin(); await carregar(); })();
+</script>
+</body>
+</html>
