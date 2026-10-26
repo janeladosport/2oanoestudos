@@ -31,6 +31,7 @@ main{max-width:1250px;margin:25px auto;padding:0 20px 50px}
 .painel-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
 .painel h2{margin:0;font-size:19px}
 .acoes{display:flex;gap:5px}.acoes button{padding:6px 8px;font-size:12px}
+.ordem-acoes{display:flex;gap:4px;flex-shrink:0}.ordem-acoes button{padding:5px 7px;font-size:12px;line-height:1}
 .botoes{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px}
 .link-btn{display:flex;align-items:center;justify-content:center;min-height:42px;padding:9px 12px;border-radius:10px;background:#f0f3f7;color:#202936;text-decoration:none;font-weight:600;text-align:center;transition:.15s}
 .link-btn:hover{background:#dfe7f0;transform:translateY(-1px)}
@@ -59,6 +60,8 @@ hr{border:0;border-top:1px solid #e2e6eb;margin:20px 0}
     <div id="loginStatus" class="login-info">Modo visitante</div>
   </div>
   <div class="toolbar">
+    <button id="salvarOrdemBtn" class="btn-primary hidden" style="background:#1fa971" onclick="salvarOrdem()">💾 Salvar ordem</button>
+    <button id="descartarOrdemBtn" class="btn-danger hidden" onclick="descartarOrdem()">Descartar</button>
     <button id="novaPastaBtn" class="btn-primary hidden" onclick="abrirPastaModal()">+ Nova pasta</button>
     <button id="novoPainelBtn" class="btn-primary hidden" onclick="abrirNovoPainel()">+ Novo painel</button>
     <button id="loginBtn" class="btn-secondary" onclick="abrirLogin()">Entrar</button>
@@ -141,6 +144,7 @@ let pastaAtual = null;      // id da pasta aberta (null = tela inicial)
 let pastaEditando = null;   // id da pasta no modal (null = nova)
 let painelEditando = null;  // id do painel no modal (null = novo)
 let souAdmin = false;
+let ordemPendente = {pastas:new Set(), paineis:new Set()};  // mudanças de ordem ainda não salvas
 
 function esc(v){
   return String(v ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;")
@@ -165,6 +169,7 @@ async function verificarAdmin(){
   $("logoutBtn").classList.toggle("hidden", !souAdmin);
   $("loginStatus").textContent = souAdmin ? "Administrador conectado"
     : (user ? "Usuário conectado — modo visitante" : "Modo visitante");
+  atualizarBarraOrdem();
 }
 function abrirLogin(){ $("modalLogin").classList.add("ativo"); $("loginEmail").focus(); }
 function fecharModais(){ document.querySelectorAll(".modal-bg").forEach(x=>x.classList.remove("ativo")); }
@@ -200,6 +205,8 @@ async function carregar(){
   const bs = r3.data || [];
   paineis = (r2.data || []).map(p => ({...p, botoes: bs.filter(b => b.painel_id === p.id)}));
   $("status").textContent = "";
+  ordemPendente = {pastas:new Set(), paineis:new Set()};
+  atualizarBarraOrdem();
   renderizar();
 }
 
@@ -221,9 +228,15 @@ function htmlPainel(p){
     <section class="painel">
       <div class="painel-topo">
         <h2>${esc(p.titulo)}</h2>
-        ${souAdmin ? `<div class="acoes">
-          <button class="btn-light" title="Editar" onclick="editarPainel('${p.id}')">✏️</button>
-          <button class="btn-danger" title="Excluir" onclick="excluirPainel('${p.id}')">🗑️</button>
+        ${souAdmin ? `<div style="display:flex;align-items:center;gap:8px">
+          <div class="ordem-acoes">
+            <button class="btn-light" title="Mover painel para cima" onclick="moverItem('painel','${p.id}',-1)">▲</button>
+            <button class="btn-light" title="Mover painel para baixo" onclick="moverItem('painel','${p.id}',1)">▼</button>
+          </div>
+          <div class="acoes">
+            <button class="btn-light" title="Editar" onclick="editarPainel('${p.id}')">✏️</button>
+            <button class="btn-danger" title="Excluir" onclick="excluirPainel('${p.id}')">🗑️</button>
+          </div>
         </div>` : ""}
       </div>
       <div class="botoes">
@@ -237,9 +250,15 @@ function htmlPainel(p){
 function htmlPasta(p){
   const nf = filhas(p.id).length, np = paineis.filter(x => x.pasta_id === p.id).length;
   return `<div class="pasta" onclick="abrirPasta('${p.id}')">
-    ${souAdmin ? `<div class="acoes">
-      <button class="btn-light" title="Editar" onclick="event.stopPropagation();editarPasta('${p.id}')">✏️</button>
-      <button class="btn-danger" title="Excluir" onclick="event.stopPropagation();excluirPasta('${p.id}')">🗑️</button>
+    ${souAdmin ? `<div style="display:flex;align-items:center;gap:8px">
+      <div class="ordem-acoes">
+        <button class="btn-light" title="Mover pasta para cima" onclick="event.stopPropagation();moverItem('pasta','${p.id}',-1)">▲</button>
+        <button class="btn-light" title="Mover pasta para baixo" onclick="event.stopPropagation();moverItem('pasta','${p.id}',1)">▼</button>
+      </div>
+      <div class="acoes">
+        <button class="btn-light" title="Editar" onclick="event.stopPropagation();editarPasta('${p.id}')">✏️</button>
+        <button class="btn-danger" title="Excluir" onclick="event.stopPropagation();excluirPasta('${p.id}')">🗑️</button>
+      </div>
     </div>` : ""}
     <div class="icone">📁</div><h3>${esc(p.titulo)}</h3>
     <div class="muted">${nf} pasta(s), ${np} painel(is)</div></div>`;
@@ -283,6 +302,79 @@ function voltar(){
   pastaAtual = p ? (p.pai_id || null) : null;
   renderizar();
 }
+
+/* ---------- reordenar pastas, subpastas e painéis (administrador) ---------- */
+async function moverItem(tipo, id, direcao){
+  if(!souAdmin) return;
+
+  const ePastas = tipo === "pasta";
+  const lista = ePastas ? pastas : paineis;
+  const item = lista.find(x => x.id === id);
+  if(!item) return;
+
+  // Reordena somente entre irmãs ou painéis dentro da mesma pasta.
+  const grupo = ePastas
+    ? pastas.filter(x => (x.pai_id || null) === (item.pai_id || null))
+    : paineis.filter(x => (x.pasta_id || null) === (item.pasta_id || null));
+
+  grupo.sort((a,b) => {
+    const oa = Number.isFinite(Number(a.ordem)) ? Number(a.ordem) : 0;
+    const ob = Number.isFinite(Number(b.ordem)) ? Number(b.ordem) : 0;
+    return oa - ob || String(a.criado_em || "").localeCompare(String(b.criado_em || ""));
+  });
+
+  const atual = grupo.findIndex(x => x.id === id);
+  const destino = atual + direcao;
+  if(atual < 0 || destino < 0 || destino >= grupo.length) return;
+
+  [grupo[atual], grupo[destino]] = [grupo[destino], grupo[atual]];
+
+  // Só altera na tela (memória); nada é gravado até clicar em "Salvar ordem".
+  grupo.forEach((x,i) => {
+    if(Number(x.ordem) !== i){ x.ordem = i; (ePastas ? ordemPendente.pastas : ordemPendente.paineis).add(x.id); }
+  });
+  const cmp = (a,b) => (Number(a.ordem)||0) - (Number(b.ordem)||0);
+  if(ePastas) pastas.sort(cmp); else paineis.sort(cmp);
+  atualizarBarraOrdem();
+  renderizar();
+}
+
+function atualizarBarraOrdem(){
+  const tem = ordemPendente.pastas.size + ordemPendente.paineis.size > 0;
+  $("salvarOrdemBtn").classList.toggle("hidden", !(souAdmin && tem));
+  $("descartarOrdemBtn").classList.toggle("hidden", !(souAdmin && tem));
+  if(tem) $("status").textContent = "Ordem alterada, mas ainda não salva. Clique em “Salvar ordem” quando terminar.";
+  else if($("status").textContent.startsWith("Ordem alterada")) $("status").textContent = "";
+}
+
+async function salvarOrdem(){
+  if(!souAdmin) return;
+  $("status").textContent = "Salvando nova ordem...";
+  const jobs = [
+    ...[...ordemPendente.pastas].map(id => ["pastas", pastas.find(x => x.id === id)]),
+    ...[...ordemPendente.paineis].map(id => ["paineis", paineis.find(x => x.id === id)])
+  ].filter(j => j[1]);
+  for(const [tabela, item] of jobs){
+    const {error} = await db.from(tabela).update({ordem:item.ordem}).eq("id", item.id);
+    if(error){
+      alert("Não foi possível salvar a ordem: " + error.message);
+      $("status").textContent = "Erro ao salvar. As alterações continuam na tela; tente novamente.";
+      return;
+    }
+  }
+  await carregar();
+  $("status").textContent = "Ordem salva ✔";
+  setTimeout(() => { if($("status").textContent === "Ordem salva ✔") $("status").textContent = ""; }, 2500);
+}
+
+async function descartarOrdem(){
+  if(!confirm("Descartar as mudanças de ordem não salvas?")) return;
+  await carregar();
+}
+
+window.addEventListener("beforeunload", e => {
+  if(ordemPendente.pastas.size + ordemPendente.paineis.size > 0){ e.preventDefault(); e.returnValue = ""; }
+});
 
 /* ---------- pastas ---------- */
 function preencherSelectPai(selecionado, excluir = []){
