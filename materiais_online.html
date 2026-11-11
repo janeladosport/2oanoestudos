@@ -27,6 +27,17 @@ main{max-width:1250px;margin:25px auto;padding:0 20px 50px}
 .pasta h3{margin:10px 0 6px;font-size:20px}
 .pasta .acoes{position:absolute;top:12px;right:12px}
 #painelContainer{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+.notificacoes{position:relative}
+.btn-notificacoes{position:relative;background:#3a4554;color:#fff;min-width:42px;font-size:18px;padding:8px 11px}
+.notif-contador{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:20px;background:#e55353;color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;border:2px solid #18202b}
+.notif-painel{display:none;position:absolute;right:0;top:calc(100% + 10px);width:min(340px,calc(100vw - 30px));background:#fff;color:#18202b;border:1px solid #dce2e9;border-radius:13px;box-shadow:0 10px 30px rgba(0,0,0,.2);z-index:30;overflow:hidden}
+.notif-painel.aberto{display:block}
+.notif-cabecalho{padding:13px 15px;font-weight:700;border-bottom:1px solid #e6eaf0}
+.notif-item{padding:12px 15px;border-bottom:1px solid #edf0f4}
+.notif-item:last-child{border-bottom:0}
+.notif-nome{font-weight:600;font-size:14px;overflow-wrap:anywhere}
+.notif-data{font-size:12px;color:#697585;margin-top:4px}
+.notif-vazia{padding:18px 15px;color:#697585;font-size:13px}
 .painel{background:#fff;border-radius:18px;padding:18px;box-shadow:0 5px 18px rgba(20,30,40,.09);border:1px solid #e0e5eb}
 .painel-topo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:15px}
 .painel h2{margin:0;font-size:19px}
@@ -64,6 +75,13 @@ hr{border:0;border-top:1px solid #e2e6eb;margin:20px 0}
     <button id="descartarOrdemBtn" class="btn-danger hidden" onclick="descartarOrdem()">Descartar</button>
     <button id="novaPastaBtn" class="btn-primary hidden" onclick="abrirPastaModal()">+ Nova pasta</button>
     <button id="novoPainelBtn" class="btn-primary hidden" onclick="abrirNovoPainel()">+ Novo painel</button>
+    <div class="notificacoes" id="notificacoes">
+      <button id="btnNotificacoes" class="btn-notificacoes" title="Últimas adições" aria-label="Abrir notificações" aria-expanded="false" onclick="alternarNotificacoes()">🔔<span id="notifContador" class="notif-contador">0</span></button>
+      <div id="painelNotificacoes" class="notif-painel">
+        <div class="notif-cabecalho">Últimos painéis adicionados</div>
+        <div id="listaNotificacoes"></div>
+      </div>
+    </div>
     <button id="loginBtn" class="btn-secondary" onclick="abrirLogin()">Entrar</button>
     <button id="logoutBtn" class="btn-secondary hidden" onclick="sair()">Sair</button>
   </div>
@@ -155,6 +173,43 @@ function linkSeguro(v){
   catch{ return "#"; }
 }
 
+/* ---------- central de notificações ---------- */
+function dataNotificacao(valor){
+  if(!valor) return "Data não disponível";
+  const d = new Date(valor);
+  if(Number.isNaN(d.getTime())) return "Data não disponível";
+  return d.toLocaleString("pt-BR", {
+    day:"2-digit", month:"2-digit", year:"numeric",
+    hour:"2-digit", minute:"2-digit"
+  });
+}
+function atualizarNotificacoes(){
+  const recentes = [...paineis]
+    .filter(p => p.criado_em && !Number.isNaN(new Date(p.criado_em).getTime()))
+    .sort((a,b) => new Date(b.criado_em) - new Date(a.criado_em))
+    .slice(0,5);
+
+  $("notifContador").textContent = recentes.length;
+  $("listaNotificacoes").innerHTML = recentes.length
+    ? recentes.map(p => `
+        <div class="notif-item">
+          <div class="notif-nome">${esc(p.titulo)}${p.pasta_id ? ", em " + esc(caminho(p.pasta_id).map(x => x.titulo).join("/")) : ""}</div>
+          <div class="notif-data">${esc(dataNotificacao(p.criado_em))}</div>
+        </div>`).join("")
+    : '<div class="notif-vazia">Nenhum painel adicionado ainda.</div>';
+}
+function alternarNotificacoes(){
+  const painel = $("painelNotificacoes");
+  const aberto = painel.classList.toggle("aberto");
+  $("btnNotificacoes").setAttribute("aria-expanded", String(aberto));
+}
+document.addEventListener("click", e => {
+  if(!$("notificacoes").contains(e.target)){
+    $("painelNotificacoes").classList.remove("aberto");
+    $("btnNotificacoes").setAttribute("aria-expanded","false");
+  }
+});
+
 /* ---------- login ---------- */
 async function verificarAdmin(){
   const {data:{user}} = await db.auth.getUser();
@@ -205,6 +260,7 @@ async function carregar(){
   const bs = r3.data || [];
   paineis = (r2.data || []).map(p => ({...p, botoes: bs.filter(b => b.painel_id === p.id)}));
   $("status").textContent = "";
+  atualizarNotificacoes();
   ordemPendente = {pastas:new Set(), paineis:new Set()};
   atualizarBarraOrdem();
   renderizar();
